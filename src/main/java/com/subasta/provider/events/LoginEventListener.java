@@ -1,5 +1,6 @@
 package com.subasta.provider.events;
 
+import com.subasta.repository.AuditRepository;
 import com.subasta.repository.DatabaseManager;
 import com.subasta.repository.UserRepository;
 import org.keycloak.events.Event;
@@ -7,6 +8,7 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.Errors;
 
+import java.sql.Connection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,37 +16,98 @@ public class LoginEventListener implements EventListenerProvider {
 
     private static final Logger logger = Logger.getLogger(LoginEventListener.class.getName());
 
+    private static final String HOSTNAME = "KEYCLOAK";
+
+    private final DatabaseManager databaseManager;
     private final UserRepository userRepository;
 
     public LoginEventListener(DatabaseManager databaseManager) {
+        this.databaseManager = databaseManager;
         this.userRepository = new UserRepository(databaseManager);
     }
 
     @Override
     public void onEvent(Event event) {
-        if (event.getType() != EventType.LOGIN_ERROR) {
+        if (databaseManager == null) {
             return;
         }
 
+        switch (event.getType()) {
+            case LOGIN -> handleLoginSuccess(event);
+            case LOGIN_ERROR -> handleLoginError(event);
+            case LOGOUT -> handleLogout(event);
+            default -> {}
+        }
+    }
+
+    private void handleLoginSuccess(Event event) {
+        String username = getUsername(event);
+        String sessionId = event.getSessionId();
+        String ip = event.getIpAddress();
+
+        if (username == null || sessionId == null) {
+            return;
+        }
+
+        logger.log(Level.INFO, () -> "[EVENT-LISTENER] Login exitoso: " + username + " session=" + sessionId);
+
+        try (Connection conn = databaseManager.getConnection()) {
+            new AuditRepository(conn).saveLoginAttempt(sessionId, username, ip, HOSTNAME, true, null);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e, () -> "[EVENT-LISTENER] Error auditando login exitoso: " + username);
+        }
+    }
+
+    private void handleLoginError(Event event) {
+        String username = getUsername(event);
+        String sessionId = event.getSessionId();
+        String ip = event.getIpAddress();
         String error = event.getError();
-        if (!Errors.USER_DISABLED.equals(error) && !Errors.USER_TEMPORARILY_DISABLED.equals(error)) {
-            return;
-        }
 
-        String username = null;
-        if (event.getDetails() != null) {
-            username = event.getDetails().get("username");
-        }
-        if (username == null || username.isEmpty()) {
-            final String logError = error;
-            logger.log(Level.WARNING, () -> "[EVENT-LISTENER] LOGIN_ERROR sin username, error=" + logError);
+        if (username == null) {
             return;
         }
 
         final String logUsername = username;
         final String logError = error;
-        logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Keycloak bloqueo cuenta: " + logUsername + " (error=" + logError + ")");
-        userRepository.blockUser(username);
+        logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Login fallido: " + logUsername + " error=" + logError);
+
+        if (Errors.USER_DISABLED.equals(error) || Errors.USER_TEMPORARILY_DISABLED.equals(error)) {
+            logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Bloqueando cuenta en BD: " + logUsername);
+            userRepository.blockUser(username);
+        }
+
+        try (Connection conn = databaseManager.getConnection()) {
+            String sessionUuid = sessionId != null ? sessionId : java.util.UUID.randomUUID().toString();
+            new AuditRepository(conn).saveLoginAttempt(sessionUuid, username, ip, HOSTNAME, false, error);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e, () -> "[EVENT-LISTENER] Error auditando login fallido: " + username);
+        }
+    }
+
+    private void handleLogout(Event event) {
+        String sessionId = event.getSessionId();
+        if (sessionId == null) {
+            return;
+        }
+
+        String username = getUsername(event);
+        final String logUsername = username != null ? username : "unknown";
+        final String logSessionId = sessionId;
+        logger.log(Level.INFO, () -> "[EVENT-LISTENER] Logout: " + logUsername + " session=" + logSessionId);
+
+        try (Connection conn = databaseManager.getConnection()) {
+            new AuditRepository(conn).closeSession(sessionId, "LOGOUT");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e, () -> "[EVENT-LISTENER] Error cerrando sesion: " + logSessionId);
+        }
+    }
+
+    private String getUsername(Event event) {
+        if (event.getDetails() != null) {
+            return event.getDetails().get("username");
+        }
+        return null;
     }
 
     @Override

@@ -19,8 +19,7 @@ public class AuditRepository {
         this.connection = connection;
     }
 
-    public void saveLoginAttempt(String username, String ip, String hostname, boolean success, String failureReason) {
-        String sessionUuid = UUID.randomUUID().toString();
+    public void saveLoginAttempt(String sessionUuid, String username, String ip, String hostname, boolean success, String failureReason) {
 
         //language=TSQL
         String sql = """
@@ -46,7 +45,7 @@ public class AuditRepository {
         }
     }
 
-    public void closeSession(String sessionUuid) {
+    public void closeSession(String sessionUuid, String tipoCierre) {
         //language=TSQL
         String sql = """
                 UPDATE ESEGURIDAD.SGTM_AUDITORIA_SESIONES
@@ -54,9 +53,9 @@ public class AuditRepository {
                 WHERE SESION_UUID = ? AND FIN_SESION IS NULL
                 """;
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)){
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-            stmt.setString(2, "TOKEN_EXPIRADO");
+            stmt.setString(2, tipoCierre);
             stmt.setString(3, sessionUuid);
             stmt.executeUpdate();
         } catch (SQLException e) {

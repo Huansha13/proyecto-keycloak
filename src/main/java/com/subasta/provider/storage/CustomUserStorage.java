@@ -2,7 +2,6 @@ package com.subasta.provider.storage;
 
 import com.subasta.model.UserAdapter;
 import com.subasta.model.UserData;
-import com.subasta.repository.AuditRepository;
 import com.subasta.repository.DatabaseManager;
 import com.subasta.repository.UserRepository;
 import org.keycloak.component.ComponentModel;
@@ -20,7 +19,6 @@ import org.keycloak.storage.user.UserLookupProvider;
 import org.keycloak.storage.user.UserQueryProvider;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,6 @@ public class CustomUserStorage
         CredentialInputUpdater, UserQueryProvider {
 
     private static final Logger logger = Logger.getLogger(CustomUserStorage.class.getName());
-    public static final String KEYCLOAK = "keycloak";
 
     private final KeycloakSession session;
     private final ComponentModel model;
@@ -46,17 +43,6 @@ public class CustomUserStorage
         this.model = model;
         this.databaseManager = databaseManager;
         this.userRepository = new UserRepository(databaseManager);
-    }
-
-    private String getClientIp() {
-        try {
-            if (session.getContext() != null && session.getContext().getConnection() != null) {
-                return session.getContext().getConnection().getRemoteAddr();
-            }
-        } catch (Exception e) {
-            logger.log(Level.FINE, "No se pudo obtener IP del request", e);
-        }
-        return "unknown";
     }
 
     private UserModel mapUser(RealmModel realm, UserData data) {
@@ -142,18 +128,10 @@ public class CustomUserStorage
         }
 
         String username = user.getUsername();
-        String ip = getClientIp();
 
-        try {
-            if (userRepository.isUserBlocked(username)) {
-                logger.log(Level.WARNING, () -> "[LOGIN] Usuario bloqueado en BD: " + username);
-                try (Connection conn = databaseManager.getConnection()) {
-                    new AuditRepository(conn).saveLoginAttempt(username, ip, KEYCLOAK, false, "Cuenta bloqueada");
-                }
-                return false;
-            }
-        } catch (Exception e) {
-            logger.log(Level.WARNING, e, () -> "Error verificando bloqueo para: " + username);
+        if (userRepository.isUserBlocked(username)) {
+            logger.log(Level.WARNING, () -> "[LOGIN] Usuario bloqueado en BD: " + username);
+            return false;
         }
 
         String storedHash = userRepository.getPasswordHash(username);
@@ -171,18 +149,11 @@ public class CustomUserStorage
             valid = false;
         }
 
-        try (Connection conn = databaseManager.getConnection()) {
-            AuditRepository auditRepo = new AuditRepository(conn);
-            if (valid) {
-                auditRepo.saveLoginAttempt(username, ip, KEYCLOAK, true, null);
-                userRepository.unblockUser(username);
-                logger.log(Level.INFO, () -> "[LOGIN] Login exitoso para: " + username);
-            } else {
-                auditRepo.saveLoginAttempt(username, ip, KEYCLOAK, false, "Credenciales incorrectas");
-                logger.log(Level.WARNING, () -> "[LOGIN] Login fallido para: " + username);
-            }
-        } catch (Exception e) {
-            logger.log(Level.WARNING, e, () -> "Error guardando auditoria para: " + username);
+        if (valid) {
+            userRepository.unblockUser(username);
+            logger.log(Level.INFO, () -> "[LOGIN] Login exitoso para: " + username);
+        } else {
+            logger.log(Level.WARNING, () -> "[LOGIN] Login fallido para: " + username);
         }
 
         return valid;
