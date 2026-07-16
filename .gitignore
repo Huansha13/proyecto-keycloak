@@ -23,6 +23,6 @@ Thumbs.db
 
 # Archivos específicos ignorados
 docs/
-deploy.sh
-docker-compose.yml
-plugins/
+#deploy.sh
+#docker-compose.yml
+#plugins/

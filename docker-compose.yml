@@ -1,0 +1,22 @@
+services:
+  keycloak-subastas:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-subastas-container
+    ports:
+      - "8086:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_LOG_LEVEL=INFO
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./plugins:/opt/keycloak/providers
+      - ./realm-export:/opt/keycloak/data/import
+      - keycloak-data:/opt/keycloak/data
+    command: start-dev --import-realm
+
+volumes:
+  keycloak-data:
