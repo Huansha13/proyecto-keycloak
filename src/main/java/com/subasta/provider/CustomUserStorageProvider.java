@@ -1,8 +1,10 @@
 package com.subasta.provider;
 
 import com.subasta.mode.UserAdapter;
+import com.subasta.repository.AuditRepository;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.GroupModel;
@@ -20,6 +22,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +32,8 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class CustomUserStorageProvider
-        implements UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
+        implements UserStorageProvider, UserLookupProvider, CredentialInputValidator,
+        CredentialInputUpdater, UserQueryProvider {
 
     private static final Logger logger = Logger.getLogger(CustomUserStorageProvider.class.getName());
 
@@ -56,6 +61,17 @@ public class CustomUserStorageProvider
         return connection;
     }
 
+    private String getClientIp() {
+        try {
+            if (session.getContext() != null && session.getContext().getConnection() != null) {
+                return session.getContext().getConnection().getRemoteAddr();
+            }
+        } catch (Exception e) {
+            logger.log(Level.FINE, "No se pudo obtener IP del request", e);
+        }
+        return "unknown";
+    }
+
     @Override
     public UserModel getUserById(RealmModel realm, String id) {
         String externalId = StorageId.externalId(id);
@@ -80,7 +96,7 @@ public class CustomUserStorageProvider
         try {
             PreparedStatement stmt = getConnection().prepareStatement(
                     "SELECT ID, NOMBRES, APPATERNO, APMATERNO, LOGIN, EMAIL, EMAILALTERNATIVO, HABILITADO " +
-                            "FROM ESEGURIDAD.SGTM_USUARIO WHERE LOGIN = ?"
+                            "FROM ESEGURIDAD.SGTM_USUARIO WHERE UPPER(LOGIN) = UPPER(?)"
             );
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
@@ -99,7 +115,7 @@ public class CustomUserStorageProvider
             // FIX: Ahora busca el correo tanto en LOGIN como en EMAILALTERNATIVO
             PreparedStatement stmt = getConnection().prepareStatement(
                     "SELECT ID, NOMBRES, APPATERNO, APMATERNO, LOGIN, EMAIL, EMAILALTERNATIVO, HABILITADO " +
-                            "FROM ESEGURIDAD.SGTM_USUARIO WHERE LOGIN = ? OR EMAIL = ? OR EMAILALTERNATIVO = ?"
+                            "FROM ESEGURIDAD.SGTM_USUARIO WHERE UPPER(LOGIN) = UPPER(?) OR UPPER(EMAIL) = UPPER(?) OR UPPER(EMAILALTERNATIVO) = UPPER(?)"
             );
             stmt.setString(1, email);
             stmt.setString(2, email);
@@ -124,11 +140,8 @@ public class CustomUserStorageProvider
         String emailAlternativo = rs.getString("EMAILALTERNATIVO");
         int habilitado = rs.getInt("HABILITADO");
 
-        logger.info(String.format(">>> [MAPEO BD] ID: %d | Login: '%s' | Nombres: '%s' | AppP: '%s' | AppM: '%s' | Email: '%s' | EmailAlt: '%s'",
-                id, login, nombres, apellidoPaterno, apellidoMaterno, email, emailAlternativo));
-
         String storageId = StorageId.keycloakId(model, String.valueOf(id));
-        UserAdapter adapter = new UserAdapter(session, realm, model, storageId);
+        UserAdapter adapter = new UserAdapter(session, realm, model, storageId, this);
 
         adapter.setUsername(login);
         adapter.setFirstName(nombres != null ? nombres : "");
@@ -148,6 +161,19 @@ public class CustomUserStorageProvider
         adapter.setEmail(resolvedEmail);
 
         adapter.setEnabled(habilitado == 1);
+
+        // === ATRIBUTOS CUSTOM PARA JWT (compatibilidad con Azure AD) ===
+        adapter.setSingleAttribute("oid", String.valueOf(id));
+        adapter.setSingleAttribute("preferred_username", login);
+
+        String fullName = ((nombres != null ? nombres : "") + " " +
+                (apellidoPaterno != null ? apellidoPaterno : "") + " " +
+                (apellidoMaterno != null ? apellidoMaterno : "")).trim();
+        adapter.setSingleAttribute("name", fullName);
+
+        adapter.setSingleAttribute("scp", "User.read User.write");
+
+        adapter.setAttribute("roles", fetchUserRoles(id));
 
         return adapter;
     }
@@ -172,28 +198,159 @@ public class CustomUserStorageProvider
             return false;
         }
 
-        String storedHash = getPasswordHash(user.getUsername());
+        String username = user.getUsername();
+        String ip = getClientIp();
+
+        // 1. Verificar si el usuario esta bloqueado en BD (sincronizado desde eventos Keycloak)
+        try {
+            if (isBlockedInDb(username)) {
+                logger.warning("[LOGIN] Usuario bloqueado en BD: " + username);
+                new AuditRepository(getConnection()).saveLoginAttempt(username, ip, "keycloak", false, "Cuenta bloqueada");
+                return false;
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error verificando bloqueo para: " + username, e);
+        }
+
+        // 2. Obtener hash de contrasena
+        String storedHash = getPasswordHash(username);
         if (storedHash == null) {
-            logger.warning("No password hash found for user: " + user.getUsername());
+            logger.warning("No password hash found for user: " + username);
             return false;
         }
 
+        // 3. Validar contrasena con BCrypt
         String passwordIngresada = input.getChallengeResponse();
+        boolean valid;
+        try {
+            valid = BCrypt.checkpw(passwordIngresada, storedHash);
+        } catch (Exception e) {
+            logger.warning("BCrypt validation error: " + e.getMessage());
+            valid = storedHash.equals(passwordIngresada);
+        }
+
+        // 4. Registrar auditoria
+        try {
+            AuditRepository auditRepo = new AuditRepository(getConnection());
+            if (valid) {
+                auditRepo.saveLoginAttempt(username, ip, "keycloak", true, null);
+                resetBlockedInDb(username);
+                logger.info("[LOGIN] Login exitoso para: " + username);
+            } else {
+                auditRepo.saveLoginAttempt(username, ip, "keycloak", false, "Credenciales incorrectas");
+                logger.warning("[LOGIN] Login fallido para: " + username);
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error guardando auditoria para: " + username, e);
+        }
+
+        return valid;
+    }
+
+    private boolean isBlockedInDb(String username) {
+        try {
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "SELECT BLOQUEADO_POR_INTENTOS FROM ESEGURIDAD.SGTM_USUARIO WHERE UPPER(LOGIN) = UPPER(?)"
+            );
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                int bloqueado = rs.getInt("BLOQUEADO_POR_INTENTOS");
+                return bloqueado == 1;
+            }
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, "Error checking block status for: " + username, e);
+        }
+        return false;
+    }
+
+    private void resetBlockedInDb(String username) {
+        try {
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "UPDATE ESEGURIDAD.SGTM_USUARIO SET BLOQUEADO_POR_INTENTOS = 0, HABILITADO = 1 WHERE UPPER(LOGIN) = UPPER(?)"
+            );
+            stmt.setString(1, username);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, "Error resetting block status for: " + username, e);
+        }
+    }
+
+    private int countRecentFailedAttempts(String username) {
+        try {
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "SELECT COUNT(*) FROM ESEGURIDAD.SGTM_AUDITORIA_SESIONES " +
+                            "WHERE UPPER(USUARIO) = UPPER(?) AND LOGIN_EXITOSO = 0 " +
+                            "AND FECHACREACION > DATEADD(MINUTE, -15, GETDATE())"
+            );
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, "Error counting failed attempts for: " + username, e);
+        }
+        return 0;
+    }
+
+    private void disableUserInDb(String username) {
+        try {
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "UPDATE ESEGURIDAD.SGTM_USUARIO SET HABILITADO = 0, BLOQUEADO_POR_INTENTOS = 1, " +
+                            "MODIFICADOPOR = 'KEYCLOAK', FECHAMODIFICACION = GETDATE() WHERE UPPER(LOGIN) = UPPER(?)"
+            );
+            stmt.setString(1, username);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, "Error disabling user: " + username, e);
+        }
+    }
+
+    // ========================================================================
+    // CREDENTIAL INPUT UPDATER - Sync contraseña y fecha de cambio con BD
+    // ========================================================================
+
+    @Override
+    public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
+        if (!supportsCredentialType(input.getType())) {
+            return false;
+        }
+
+        String username = user.getUsername();
+        String encodedPassword = BCrypt.hashpw(input.getChallengeResponse(), BCrypt.gensalt());
 
         try {
-            // FIX: Verificación real de la contraseña usando BCrypt
-            return BCrypt.checkpw(passwordIngresada, storedHash);
-        } catch (Exception e) {
-            // Fallback en caso de que el hash en BD no sea de formato BCrypt o esté en texto plano
-            logger.warning("Error comparando hashes BCrypt. Intentando comparacion plana por si acaso...");
-            return storedHash.equals(passwordIngresada);
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "UPDATE ESEGURIDAD.SGTM_USUARIO SET PASSWORD = ?, FECHAULTIMOCAMBIOPASSWORD = ?, MODIFICADOPOR = 'KEYCLOAK', FECHAMODIFICACION = ? WHERE UPPER(LOGIN) = UPPER(?)"
+            );
+            stmt.setString(1, encodedPassword);
+            stmt.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(4, username);
+            stmt.executeUpdate();
+            logger.info("[PASSWORD] Contraseña actualizada en BD para: " + username);
+            return true;
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error actualizando contraseña en BD para: " + username, e);
+            return false;
         }
+    }
+
+    @Override
+    public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
+        // No aplica - las contraseñas se manejan en BD
+    }
+
+    @Override
+    public Stream<String> getDisableableCredentialTypesStream(RealmModel realm, UserModel user) {
+        return Stream.empty();
     }
 
     private String getPasswordHash(String username) {
         try {
             PreparedStatement stmt = getConnection().prepareStatement(
-                    "SELECT PASSWORD FROM ESEGURIDAD.SGTM_USUARIO WHERE LOGIN = ?"
+                    "SELECT PASSWORD FROM ESEGURIDAD.SGTM_USUARIO WHERE UPPER(LOGIN) = UPPER(?)"
             );
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
@@ -204,6 +361,30 @@ public class CustomUserStorageProvider
             logger.log(Level.SEVERE, "Error fetching password for user: " + username, e);
         }
         return null;
+    }
+
+    private List<String> fetchUserRoles(long userId) {
+        List<String> roles = new ArrayList<>();
+        try {
+            PreparedStatement stmt = getConnection().prepareStatement(
+                    "SELECT DISTINCT R.NOMBRECORTO " +
+                            "FROM ESEGURIDAD.SGTR_USUARIO_PERFILES UP " +
+                            "INNER JOIN ESEGURIDAD.SGTM_PERFIL P ON P.ID = UP.ID_PERFIL AND P.HABILITADO = 1 " +
+                            "INNER JOIN ESEGURIDAD.SGTM_ROL_EMPRESARIAL R ON R.ID = P.ROLEMPRESARIAL AND R.HABILITADO = 1 " +
+                            "WHERE UP.ID_USUARIO = ?"
+            );
+            stmt.setLong(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                String nombreCorto = rs.getString("NOMBRECORTO");
+                if (nombreCorto != null && !nombreCorto.trim().isEmpty()) {
+                    roles.add(nombreCorto.toUpperCase().trim());
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error fetching roles for user ID: " + userId, e);
+        }
+        return roles;
     }
 
     // ========================================================================

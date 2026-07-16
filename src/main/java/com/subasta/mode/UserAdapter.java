@@ -1,5 +1,6 @@
 package com.subasta.mode;
 
+import com.subasta.provider.CustomUserStorageProvider;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.storage.adapter.AbstractUserAdapter;
@@ -10,10 +11,12 @@ public class UserAdapter extends AbstractUserAdapter {
 
     private final String keycloakId;
     private final Map<String, List<String>> attributes = new HashMap<>();
+    private final CustomUserStorageProvider provider;
 
-    public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model, String keycloakId) {
+    public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model, String keycloakId, CustomUserStorageProvider provider) {
         super(session, realm, model);
         this.keycloakId = keycloakId;
+        this.provider = provider;
     }
 
     @Override
@@ -109,7 +112,7 @@ public class UserAdapter extends AbstractUserAdapter {
 
     @Override
     public SubjectCredentialManager credentialManager() {
-        return new NoopCredentialManager();
+        return new DelegateCredentialManager(provider, realm, this);
     }
 
     private String getFirst(String name) {

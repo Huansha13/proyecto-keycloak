@@ -19,6 +19,12 @@ public class CustomUserStorageProviderFactory
     static final String DB_USER = "DB_USER";
     static final String DB_PASSWORD = "DB_PASSWORD";
 
+    private static volatile String[] dbConfig;
+
+    public static String[] getDbConfig() {
+        return dbConfig;
+    }
+
     @Override
     public String getId() {
         return PROVIDER_ID;
@@ -31,6 +37,8 @@ public class CustomUserStorageProviderFactory
         String jdbcUrl = model.get(JDBC_URL, "");
         String dbUser = model.get(DB_USER, "");
         String dbPassword = model.get(DB_PASSWORD, "");
+
+        dbConfig = new String[]{jdbcUrl, dbUser, dbPassword};
 
         return new CustomUserStorageProvider(session, model, jdbcUrl, dbUser, dbPassword);
     }

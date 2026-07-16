@@ -25,5 +25,4 @@ Thumbs.db
 docs/
 deploy.sh
 docker-compose.yml
-plugins/keycloak-user-storage-spi-1.0.0.jar
-plugins/mssql-jdbc-12.4.2.jre11.jar
+plugins/
