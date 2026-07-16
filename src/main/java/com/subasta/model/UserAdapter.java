@@ -1,6 +1,6 @@
-package com.subasta.mode;
+package com.subasta.model;
 
-import com.subasta.provider.CustomUserStorageProvider;
+import com.subasta.provider.storage.CustomUserStorage;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.storage.adapter.AbstractUserAdapter;
@@ -11,9 +11,15 @@ public class UserAdapter extends AbstractUserAdapter {
 
     private final String keycloakId;
     private final Map<String, List<String>> attributes = new HashMap<>();
-    private final CustomUserStorageProvider provider;
+    private final CustomUserStorage provider;
 
-    public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model, String keycloakId, CustomUserStorageProvider provider) {
+    public UserAdapter(
+            KeycloakSession session,
+            RealmModel realm,
+            ComponentModel model,
+            String keycloakId,
+            CustomUserStorage provider
+    ) {
         super(session, realm, model);
         this.keycloakId = keycloakId;
         this.provider = provider;
@@ -108,6 +114,7 @@ public class UserAdapter extends AbstractUserAdapter {
 
     @Override
     public void setEmailVerified(boolean verified) {
+        //
     }
 
     @Override
@@ -118,5 +125,18 @@ public class UserAdapter extends AbstractUserAdapter {
     private String getFirst(String name) {
         List<String> values = attributes.get(name);
         return values != null && !values.isEmpty() ? values.get(0) : null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof UserModel that)) return false;
+
+        return Objects.equals(getId(), that.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId());
     }
 }

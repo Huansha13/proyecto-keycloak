@@ -1,0 +1,282 @@
+package com.subasta.provider.storage;
+
+import com.subasta.model.UserAdapter;
+import com.subasta.model.UserData;
+import com.subasta.repository.AuditRepository;
+import com.subasta.repository.DatabaseManager;
+import com.subasta.repository.UserRepository;
+import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputUpdater;
+import org.keycloak.credential.CredentialInputValidator;
+import org.keycloak.models.GroupModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.storage.StorageId;
+import org.keycloak.storage.UserStorageProvider;
+import org.keycloak.storage.user.UserLookupProvider;
+import org.keycloak.storage.user.UserQueryProvider;
+import org.mindrot.jbcrypt.BCrypt;
+
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Stream;
+
+public class CustomUserStorage
+        implements UserStorageProvider, UserLookupProvider, CredentialInputValidator,
+        CredentialInputUpdater, UserQueryProvider {
+
+    private static final Logger logger = Logger.getLogger(CustomUserStorage.class.getName());
+    public static final String KEYCLOAK = "keycloak";
+
+    private final KeycloakSession session;
+    private final ComponentModel model;
+    private final DatabaseManager databaseManager;
+    private final UserRepository userRepository;
+
+    public CustomUserStorage(KeycloakSession session, ComponentModel model,
+                             DatabaseManager databaseManager) {
+        this.session = session;
+        this.model = model;
+        this.databaseManager = databaseManager;
+        this.userRepository = new UserRepository(databaseManager);
+    }
+
+    private String getClientIp() {
+        try {
+            if (session.getContext() != null && session.getContext().getConnection() != null) {
+                return session.getContext().getConnection().getRemoteAddr();
+            }
+        } catch (Exception e) {
+            logger.log(Level.FINE, "No se pudo obtener IP del request", e);
+        }
+        return "unknown";
+    }
+
+    private UserModel mapUser(RealmModel realm, UserData data) {
+        String storageId = StorageId.keycloakId(model, String.valueOf(data.id()));
+        UserAdapter adapter = getUserAdapter(realm, data, storageId);
+
+        adapter.setSingleAttribute("oid", String.valueOf(data.id()));
+        adapter.setSingleAttribute("preferred_username", data.login());
+
+        String fullName = ((data.nombres() != null ? data.nombres() : "") + " " +
+                (data.apellidoPaterno() != null ? data.apellidoPaterno() : "") + " " +
+                (data.apellidoMaterno() != null ? data.apellidoMaterno() : "")).trim();
+        adapter.setSingleAttribute("name", fullName);
+
+        adapter.setSingleAttribute("scp", "User.read User.write");
+
+        adapter.setAttribute("roles", userRepository.fetchUserRoles(data.id()));
+
+        return adapter;
+    }
+
+    private UserAdapter getUserAdapter(RealmModel realm, UserData data, String storageId) {
+        UserAdapter adapter = new UserAdapter(session, realm, model, storageId, this);
+
+        adapter.setUsername(data.login());
+        adapter.setFirstName(data.nombres() != null ? data.nombres() : "");
+
+        String lastName = (data.apellidoPaterno() != null ? data.apellidoPaterno() : "") +
+                (data.apellidoMaterno() != null ? " " + data.apellidoMaterno() : "");
+        adapter.setLastName(lastName.trim());
+
+        String resolvedEmail;
+        if (data.email() != null && !data.email().trim().isEmpty()) {
+            resolvedEmail = data.email();
+        } else if (data.emailAlternativo() != null && !data.emailAlternativo().trim().isEmpty()) {
+            resolvedEmail = data.emailAlternativo();
+        } else {
+            resolvedEmail = data.login();
+        }
+        adapter.setEmail(resolvedEmail);
+
+        adapter.setEnabled(data.habilitado() == 1);
+        return adapter;
+    }
+
+    @Override
+    public UserModel getUserById(RealmModel realm, String id) {
+        String externalId = StorageId.externalId(id);
+        UserData data = userRepository.findUserById(Long.parseLong(externalId));
+        return data != null ? mapUser(realm, data) : null;
+    }
+
+    @Override
+    public UserModel getUserByUsername(RealmModel realm, String username) {
+        UserData data = userRepository.findUserByUsername(username);
+        return data != null ? mapUser(realm, data) : null;
+    }
+
+    @Override
+    public UserModel getUserByEmail(RealmModel realm, String email) {
+        UserData data = userRepository.findUserByEmail(email);
+        return data != null ? mapUser(realm, data) : null;
+    }
+
+    @Override
+    public boolean supportsCredentialType(String credentialType) {
+        return PasswordCredentialModel.TYPE.equals(credentialType);
+    }
+
+    @Override
+    public boolean isConfiguredFor(RealmModel realm, UserModel user, String credentialType) {
+        if (!supportsCredentialType(credentialType)) {
+            return false;
+        }
+        String password = userRepository.getPasswordHash(user.getUsername());
+        return password != null;
+    }
+
+    @Override
+    public boolean isValid(RealmModel realm, UserModel user, CredentialInput input) {
+        if (!supportsCredentialType(input.getType())) {
+            return false;
+        }
+
+        String username = user.getUsername();
+        String ip = getClientIp();
+
+        try {
+            if (userRepository.isUserBlocked(username)) {
+                logger.log(Level.WARNING, () -> "[LOGIN] Usuario bloqueado en BD: " + username);
+                try (Connection conn = databaseManager.getConnection()) {
+                    new AuditRepository(conn).saveLoginAttempt(username, ip, KEYCLOAK, false, "Cuenta bloqueada");
+                }
+                return false;
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e, () -> "Error verificando bloqueo para: " + username);
+        }
+
+        String storedHash = userRepository.getPasswordHash(username);
+        if (storedHash == null) {
+            logger.log(Level.WARNING, () -> "No password hash found for user: " + username);
+            return false;
+        }
+
+        String passwordIngresada = input.getChallengeResponse();
+        boolean valid;
+        try {
+            valid = BCrypt.checkpw(passwordIngresada, storedHash);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, () -> "Bcrypt validation error for user: " + username);
+            valid = false;
+        }
+
+        try (Connection conn = databaseManager.getConnection()) {
+            AuditRepository auditRepo = new AuditRepository(conn);
+            if (valid) {
+                auditRepo.saveLoginAttempt(username, ip, KEYCLOAK, true, null);
+                userRepository.unblockUser(username);
+                logger.log(Level.INFO, () -> "[LOGIN] Login exitoso para: " + username);
+            } else {
+                auditRepo.saveLoginAttempt(username, ip, KEYCLOAK, false, "Credenciales incorrectas");
+                logger.log(Level.WARNING, () -> "[LOGIN] Login fallido para: " + username);
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e, () -> "Error guardando auditoria para: " + username);
+        }
+
+        return valid;
+    }
+
+    @Override
+    public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
+        if (!supportsCredentialType(input.getType())) {
+            return false;
+        }
+        String username = user.getUsername();
+        String encodedPassword = BCrypt.hashpw(input.getChallengeResponse(), BCrypt.gensalt());
+        return userRepository.updatePassword(username, encodedPassword);
+    }
+
+    @Override
+    public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
+        //
+    }
+
+    @Override
+    public Stream<String> getDisableableCredentialTypesStream(RealmModel realm, UserModel user) {
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<UserModel> searchForUserStream(RealmModel realm, Map<String, String> params, Integer firstResult, Integer maxResults) {
+        List<UserData> usersData;
+        String search = params.get(UserModel.SEARCH);
+
+        if (search != null && !search.trim().isEmpty()) {
+            usersData = userRepository.searchUsers(search);
+        } else {
+            usersData = userRepository.searchByEmailAndUsername(
+                    params.get(UserModel.EMAIL),
+                    params.get(UserModel.USERNAME)
+            );
+        }
+
+        List<UserModel> users = new ArrayList<>();
+        for (UserData data : usersData) {
+            users.add(mapUser(realm, data));
+        }
+
+        return applyPagination(users.stream(), firstResult, maxResults);
+    }
+
+    private Stream<UserModel> applyPagination(Stream<UserModel> stream, Integer firstResult, Integer maxResults) {
+        if (firstResult != null && firstResult > 0) {
+            stream = stream.skip(firstResult);
+        }
+        if (maxResults != null && maxResults > 0) {
+            stream = stream.limit(maxResults);
+        }
+        return stream;
+    }
+
+    @Override
+    public Stream<UserModel> getGroupMembersStream(RealmModel realm, GroupModel group, Integer firstResult, Integer maxResults) {
+        return Stream.empty();
+    }
+
+    @Override
+    public Stream<UserModel> searchForUserByUserAttributeStream(RealmModel realm, String attrName, String attrValue) {
+        return Stream.empty();
+    }
+
+    @Override
+    public void close() {
+        //
+    }
+
+    @Override
+    public int getUsersCount(RealmModel realm) {
+        return userRepository.countUsers();
+    }
+
+    @Override
+    public int getUsersCount(RealmModel realm, boolean includeServiceAccount) {
+        return getUsersCount(realm);
+    }
+
+    @Override
+    public int getUsersCount(RealmModel realm, java.util.Set<String> groupIds) {
+        return 0;
+    }
+
+    @Override
+    public int getUsersCount(RealmModel realm, String search) {
+        return userRepository.countUsersBySearch(search);
+    }
+
+    @Override
+    public int getUsersCount(RealmModel realm, Map<String, String> params) {
+        return 0;
+    }
+}

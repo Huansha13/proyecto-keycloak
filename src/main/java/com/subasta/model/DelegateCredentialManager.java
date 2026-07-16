@@ -1,22 +1,23 @@
-package com.subasta.mode;
+package com.subasta.model;
 
-import com.subasta.provider.CustomUserStorageProvider;
+import com.subasta.provider.storage.CustomUserStorage;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.SubjectCredentialManager;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
 
 import java.util.List;
 import java.util.stream.Stream;
 
 public class DelegateCredentialManager implements SubjectCredentialManager {
 
-    private final CustomUserStorageProvider provider;
+    private final CustomUserStorage provider;
     private final RealmModel realm;
     private final UserModel user;
 
-    public DelegateCredentialManager(CustomUserStorageProvider provider, RealmModel realm, UserModel user) {
+    public DelegateCredentialManager(CustomUserStorage provider, RealmModel realm, UserModel user) {
         this.provider = provider;
         this.realm = realm;
         this.user = user;
@@ -39,6 +40,7 @@ public class DelegateCredentialManager implements SubjectCredentialManager {
 
     @Override
     public void updateStoredCredential(CredentialModel cred) {
+        //
     }
 
     @Override
@@ -101,7 +103,7 @@ public class DelegateCredentialManager implements SubjectCredentialManager {
 
     @Override
     public Stream<String> getConfiguredUserStorageCredentialTypesStream() {
-        return Stream.of(CredentialModel.PASSWORD);
+        return Stream.of(PasswordCredentialModel.TYPE);
     }
 
     @Override

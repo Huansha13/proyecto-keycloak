@@ -1,1 +1,1 @@
-com.subasta.provider.CustomUserStorageProviderFactory
+com.subasta.provider.storage.CustomUserStorageFactory

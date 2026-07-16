@@ -1,4 +1,4 @@
-package com.subasta.auth;
+package com.subasta.provider.auth;
 
 import org.keycloak.Config;
 import org.keycloak.authentication.Authenticator;
@@ -7,13 +7,12 @@ import org.keycloak.authentication.ConfigurableAuthenticatorFactory;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.RealmModel;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AccountBlockCheckAuthenticatorFactory implements AuthenticatorFactory, ConfigurableAuthenticatorFactory {
+public class AccountBlockCheckFactory implements AuthenticatorFactory, ConfigurableAuthenticatorFactory {
 
     public static final String PROVIDER_ID = "account-block-check";
 
@@ -53,7 +52,7 @@ public class AccountBlockCheckAuthenticatorFactory implements AuthenticatorFacto
 
     @Override
     public Authenticator create(KeycloakSession session) {
-        return new AccountBlockCheckAuthenticator();
+        return new AccountBlockCheck();
     }
 
     @Override

@@ -1,1 +1,1 @@
-com.subasta.events.LoginEventListenerProviderFactory
+com.subasta.provider.events.LoginEventListenerFactory

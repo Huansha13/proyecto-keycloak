@@ -19,16 +19,17 @@ public class AuditRepository {
         this.connection = connection;
     }
 
-    public String saveLoginAttempt(String username, String ip, String hostname, boolean success, String failureReason) {
+    public void saveLoginAttempt(String username, String ip, String hostname, boolean success, String failureReason) {
         String sessionUuid = UUID.randomUUID().toString();
+
+        //language=TSQL
         String sql = """
                 INSERT INTO ESEGURIDAD.SGTM_AUDITORIA_SESIONES
                     (USUARIO, SESION_UUID, INICIO_SESION, DIRECCION_IP, HOSTNAME,
                      TIPO_INICIO, LOGIN_EXITOSO, MOTIVO_FALLO, CREADOPOR, FECHACREACION)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
-        try {
-            PreparedStatement stmt = connection.prepareStatement(sql);
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, username);
             stmt.setString(2, sessionUuid);
             stmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
@@ -40,27 +41,26 @@ public class AuditRepository {
             stmt.setString(9, username);
             stmt.setTimestamp(10, Timestamp.valueOf(LocalDateTime.now()));
             stmt.executeUpdate();
-            return sessionUuid;
         } catch (SQLException e) {
-            logger.log(Level.WARNING, "Error guardando auditoría de login para: " + username, e);
-            return sessionUuid;
+            logger.log(Level.WARNING, e, () -> "Error guardando auditoria de login para: " + username);
         }
     }
 
     public void closeSession(String sessionUuid) {
+        //language=TSQL
         String sql = """
                 UPDATE ESEGURIDAD.SGTM_AUDITORIA_SESIONES
                 SET FIN_SESION = ?, TIPO_CIERRE = ?
                 WHERE SESION_UUID = ? AND FIN_SESION IS NULL
                 """;
-        try {
-            PreparedStatement stmt = connection.prepareStatement(sql);
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)){
             stmt.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
             stmt.setString(2, "TOKEN_EXPIRADO");
             stmt.setString(3, sessionUuid);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            logger.log(Level.WARNING, "Error cerrando sesión: " + sessionUuid, e);
+            logger.log(Level.WARNING, e, () -> "Error cerrando sesion: " + sessionUuid);
         }
     }
 }
