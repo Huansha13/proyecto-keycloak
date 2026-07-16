@@ -3,7 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGINS_DIR="$SCRIPT_DIR/plugins"
-JAR_NAME="keycloak-user-storage-spi-1.0.0.jar"
+JAR_NAME="keycloak-subastas-1.0.0.jar"
 CONTAINER="keycloak-subastas-container"
 
 echo "==> Building JAR..."

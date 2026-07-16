@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.subasta.keycloak</groupId>
-    <artifactId>keycloak-user-storage-spi</artifactId>
+    <artifactId>keycloak-subastas</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Keycloak Custom User Storage SPI</name>
+    <name>Keycloak Subastas</name>
     <description>Custom User Storage Provider for Keycloak - Read-Only SQL Server Legacy DB</description>
 
     <properties>
