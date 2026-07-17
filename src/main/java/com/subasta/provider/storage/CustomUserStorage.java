@@ -34,14 +34,14 @@ public class CustomUserStorage
 
     private final KeycloakSession session;
     private final ComponentModel model;
-    private final DatabaseManager databaseManager;
+    // private final DatabaseManager databaseManager;
     private final UserRepository userRepository;
 
     public CustomUserStorage(KeycloakSession session, ComponentModel model,
                              DatabaseManager databaseManager) {
         this.session = session;
         this.model = model;
-        this.databaseManager = databaseManager;
+        // this.databaseManager = databaseManager;
         this.userRepository = new UserRepository(databaseManager);
     }
 

@@ -1,0 +1,428 @@
+/* =============================================
+   SUBASTAS KEYCLOAK THEME - Login Styles
+   Replicates Angular subastas-front-auth-login
+   ============================================= */
+
+/* === Reset & Base === */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #1f2937;
+    background-color: #f8f8f8;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Login View === */
+.login-view {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #f8f8f8;
+}
+
+.login-view__header {
+    position: fixed;
+    z-index: 1;
+    padding: 40px;
+    width: 100%;
+}
+
+.login-view__header img {
+    height: 32px;
+}
+
+.login-view__layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.login-view__aside {
+    display: none;
+    width: 50%;
+    min-height: 100vh;
+    padding: 16px;
+}
+
+.login-view__content {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 32px;
+    flex: 1;
+}
+
+.bg-white {
+    background-color: #ffffff !important;
+}
+
+/* === Carrousel / Aside Image === */
+.carrousel {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    /*justify-content: center;*/
+}
+
+.carrousel .img {
+    border-radius: 20px;
+    object-fit: cover;
+    object-position: center;
+    height: 100%;
+    width: 100%;
+    max-width: 40vw;
+}
+
+/* === Login Form === */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-form img {
+    max-width: 220px;
+    height: auto;
+}
+
+.login-form__content {
+    gap: 24px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* === Typography === */
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 0;
+    color: #222;
+    text-align: center;
+}
+
+.text {
+    color: #191919;
+    font-size: 16px;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+/* === Form Fields === */
+.form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* === Input Styles === */
+.input {
+    font-size: 15px;
+    width: 100%;
+    height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    background: #F9FAFB;
+    color: #1f2937;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: inherit;
+}
+
+.input:focus {
+    background: #fff;
+    border-color: #28a745;
+    outline: none;
+}
+
+.input::placeholder {
+    color: #9CA3AF;
+    font-size: 14px;
+}
+
+.input--error {
+    border-color: #DC2626 !important;
+}
+
+.input-error {
+    color: #DC2626;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* === Button Styles === */
+.button {
+    height: 44px;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    width: 100%;
+}
+
+.button--primary {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+    padding: 0 32px;
+    font-weight: 700;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+}
+
+.button--primary:hover {
+    background-color: #218838;
+    border-color: #218838;
+}
+
+.button--primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* === Forgot Password Link === */
+.forgot-password {
+    display: block;
+    text-align: right;
+    color: #0056b3;
+    font-size: 14px;
+    text-decoration: none;
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+    color: #004494;
+}
+
+/* === Footer === */
+.footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-top: 24px;
+    margin-top: auto;
+}
+
+.footer__legal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer__link {
+    font-size: 12px;
+    color: #9CA3AF;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer__link:hover {
+    color: #38b44c;
+}
+
+.footer__dot {
+    font-size: 12px;
+    color: #D1D5DB;
+}
+
+.footer__copyright {
+    font-size: 12px;
+    color: #9CA3AF;
+    margin: 0;
+}
+
+.footer__social {
+    display: flex;
+    gap: 16px;
+}
+
+.footer__social a {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.footer__social a:hover {
+    opacity: 1;
+}
+
+.footer__social img {
+    width: 20px;
+    height: 20px;
+}
+
+/* === Social Login Providers === */
+#kc-social-providers {
+    width: 100%;
+    max-width: 400px;
+}
+
+#kc-social-providers ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#kc-social-providers a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    background: #F9FAFB;
+    color: #1f2937;
+    font-size: 14px;
+    font-family: inherit;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+#kc-social-providers a:hover {
+    background: #fff;
+    border-color: #28a745;
+}
+
+#kc-social-providers img {
+    width: 20px;
+    height: 20px;
+}
+
+/* === Alert Messages === */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.alert-error {
+    background-color: #FEE2E2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+}
+
+.alert-success {
+    background-color: #D1FAE5;
+    border: 1px solid #A7F3D0;
+    color: #065F46;
+}
+
+.alert-warning {
+    background-color: #FEF3C7;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+}
+
+.alert-info {
+    background-color: #DBEAFE;
+    border: 1px solid #BFDBFE;
+    color: #1E40AF;
+}
+
+/* === Form Group (Keycloak compat) === */
+.${properties.kcFormGroupClass!} {
+    margin-bottom: 16px;
+}
+
+.${properties.kcLabelClass!} {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.${properties.kcInputClass!} {
+    font-size: 15px;
+    width: 100%;
+    height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    background: #F9FAFB;
+    color: #1f2937;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: inherit;
+}
+
+.${properties.kcInputClass!}:focus {
+    background: #fff;
+    border-color: #28a745;
+}
+
+/* === Responsive === */
+@media (min-width: 1024px) {
+    .login-view__aside {
+        display: flex;
+    }
+
+    .login-view__content {
+        width: 50%;
+        background-color: #ffffff;
+    }
+}
+
+@media (max-width: 1023px) {
+    .login-view__header {
+        padding: 20px;
+    }
+
+    .login-view__content {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-form {
+        gap: 32px;
+    }
+
+    .title {
+        font-size: 20px;
+    }
+
+    .text {
+        font-size: 14px;
+    }
+}
+
+/* === Hidden utility === */
+.kc-hidden {
+    display: none !important;
+}

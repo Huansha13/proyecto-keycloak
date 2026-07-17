@@ -5,7 +5,6 @@ import com.subasta.repository.DatabaseManager;
 import com.subasta.repository.UserRepository;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
-import org.keycloak.events.EventType;
 import org.keycloak.events.Errors;
 
 import java.sql.Connection;
@@ -36,7 +35,9 @@ public class LoginEventListener implements EventListenerProvider {
             case LOGIN -> handleLoginSuccess(event);
             case LOGIN_ERROR -> handleLoginError(event);
             case LOGOUT -> handleLogout(event);
-            default -> {}
+            default -> {
+                //
+            }
         }
     }
 

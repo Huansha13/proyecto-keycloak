@@ -1,6 +1,6 @@
 services:
   keycloak-subastas:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.7.0
     container_name: keycloak-subastas-container
     ports:
       - "8086:8080"
@@ -15,8 +15,9 @@ services:
     volumes:
       - ./plugins:/opt/keycloak/providers
       - ./realm-export:/opt/keycloak/data/import
+      - ./themes:/opt/keycloak/themes
       - keycloak-data:/opt/keycloak/data
-    command: start-dev --import-realm
+    command: start-dev --import-realm --spi-theme-static-max-age=-1 --spi-theme-cache-themes=false --spi-theme-cache-templates=false
 
 volumes:
   keycloak-data:
