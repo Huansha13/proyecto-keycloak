@@ -26,7 +26,7 @@
                             </div>
 
                             <form id="kc-reset-password-form" action="${url.loginAction}" method="post"
-                                  onsubmit="var btn=document.getElementById('kc-submit');btn.disabled=true;btn.textContent='Enviando...';btn.classList.add('button--loading');return true;">
+                                  onsubmit="var btn=document.getElementById('kc-submit');btn.disabled=true;btn.textContent='Enviar';btn.classList.add('button--loading');return true;">
                                 <div class="form-fields">
                                     <div class="form-field">
                                         <input tabindex="1" id="username" class="input"
@@ -34,7 +34,7 @@
                                                placeholder="Correo electrónico" />
                                     </div>
 
-                                     <button type="submit" id="kc-submit" class="button button--primary">Enviar instrucciones</button>
+                                     <button type="submit" id="kc-submit" class="button button--primary">Enviar</button>
                                 </div>
                             </form>
 

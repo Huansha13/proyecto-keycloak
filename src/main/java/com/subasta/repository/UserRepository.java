@@ -222,6 +222,44 @@ public class UserRepository {
         return roles;
     }
 
+    public void insertPasswordHistory(String email, String passwordHash) {
+        String sql = """
+                INSERT INTO ESEGURIDAD.SGTM_PASSWORD_HISTORY (EMAIL, PASSWORD_HASH)
+                VALUES (?, ?)
+                """;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            stmt.setString(2, passwordHash);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, e, () -> "Error inserting password history for: " + email);
+        }
+    }
+
+    public List<String> getPasswordHistory(String email, int count) {
+        List<String> hashes = new ArrayList<>();
+        String sql = """
+                SELECT TOP (?) PASSWORD_HASH
+                FROM ESEGURIDAD.SGTM_PASSWORD_HISTORY
+                WHERE UPPER(EMAIL) = UPPER(?)
+                ORDER BY FECHA_CAMBIO DESC
+                """;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, count);
+            stmt.setString(2, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    hashes.add(rs.getString("PASSWORD_HASH"));
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, e, () -> "Error fetching password history for: " + email);
+        }
+        return hashes;
+    }
+
     public List<UserData> searchUsers(String searchTerm) {
         List<UserData> users = new ArrayList<>();
         //language=TSQL

@@ -10,9 +10,12 @@ import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
+import org.keycloak.policy.PolicyError;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
@@ -164,8 +167,35 @@ public class CustomUserStorage
         if (!supportsCredentialType(input.getType())) {
             return false;
         }
+        String password = input.getChallengeResponse();
         String username = user.getUsername();
-        String encodedPassword = BCrypt.hashpw(input.getChallengeResponse(), BCrypt.gensalt());
+        String email = user.getEmail() != null ? user.getEmail() : username;
+
+        String currentHash = userRepository.getPasswordHash(username);
+        if (currentHash != null && !currentHash.isEmpty() && BCrypt.checkpw(password, currentHash)) {
+            throw new ModelException("invalidPasswordHistoryMessage", 8);
+        }
+
+        List<String> historyHashes = userRepository.getPasswordHistory(email, 8);
+        for (String historyHash : historyHashes) {
+            if (historyHash != null && !historyHash.isEmpty() && BCrypt.checkpw(password, historyHash)) {
+                throw new ModelException("invalidPasswordHistoryMessage", 8);
+            }
+        }
+
+        PasswordPolicyManagerProvider policyManager = session.getProvider(PasswordPolicyManagerProvider.class);
+        if (policyManager != null) {
+            PolicyError error = policyManager.validate(realm, user, password);
+            if (error != null) {
+                throw new ModelException(error.getMessage(), error.getParameters());
+            }
+        }
+
+        if (currentHash != null && !currentHash.isEmpty()) {
+            userRepository.insertPasswordHistory(email, currentHash);
+        }
+
+        String encodedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
         return userRepository.updatePassword(username, encodedPassword);
     }
 

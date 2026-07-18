@@ -43,7 +43,6 @@ public class DelegateCredentialManager implements SubjectCredentialManager {
 
     @Override
     public void updateStoredCredential(CredentialModel cred) {
-        //
     }
 
     @Override

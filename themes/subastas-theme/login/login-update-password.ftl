@@ -31,8 +31,10 @@
                                 <div class="form-field">
                                     <input type="password" id="password-new" class="input"
                                            name="password-new" autocomplete="new-password" autofocus
-                                           placeholder="Nueva contraseña" />
+                                           placeholder="Nueva contraseña" oninput="validatePolicies()" />
                                 </div>
+
+                                <p class="password-hint kc-hidden" id="password-hint"></p>
 
                                 <div class="form-field">
                                     <input type="password" id="password-confirm" class="input"
@@ -42,6 +44,23 @@
 
                                 <button type="submit" id="kc-submit" class="button button--primary">Actualizar contraseña</button>
                             </div>
+
+                            <script>
+                            function validatePolicies() {
+                                var pw = document.getElementById('password-new').value;
+                                var hint = document.getElementById('password-hint');
+                                if (!pw) { hint.className = 'password-hint kc-hidden'; return; }
+                                var missing = [];
+                                if (pw.length < 8) missing.push('mínimo 8 caracteres');
+                                if (!/[A-Z]/.test(pw)) missing.push('una mayúscula');
+                                if (!/[a-z]/.test(pw)) missing.push('una minúscula');
+                                if (!/[0-9]/.test(pw)) missing.push('un número');
+                                if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pw)) missing.push('un carácter especial');
+                                hint.className = missing.length ? 'password-hint' : 'password-hint password-hint--valid';
+                                hint.textContent = missing.length ? 'Falta ' + missing.join(', ') : 'Contraseña válida';
+                            }
+                            validatePolicies();
+                            </script>
                         </div>
                     </form>
 

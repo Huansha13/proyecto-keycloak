@@ -479,3 +479,15 @@ body {
     display: none !important;
 }
 
+/* === Password Policy Hint === */
+.password-hint {
+    font-size: 13px;
+    color: #9CA3AF;
+    margin: -8px 0 0 0;
+    transition: color 0.2s;
+}
+
+.password-hint--valid {
+    color: #16A34A;
+}
+
