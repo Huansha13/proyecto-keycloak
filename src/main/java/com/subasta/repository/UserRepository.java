@@ -222,6 +222,27 @@ public class UserRepository {
         return roles;
     }
 
+    public String getPasswordLastChanged(String username) {
+        String sql = """
+                SELECT FECHAULTIMOCAMBIOPASSWORD
+                FROM ESEGURIDAD.SGTM_USUARIO
+                WHERE UPPER(LOGIN) = UPPER(?)
+                """;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    java.sql.Timestamp ts = rs.getTimestamp("FECHAULTIMOCAMBIOPASSWORD");
+                    return ts != null ? ts.toString() : null;
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, e, () -> "Error fetching password change date for: " + username);
+        }
+        return null;
+    }
+
     public void insertPasswordHistory(String email, String passwordHash) {
         String sql = """
                 INSERT INTO ESEGURIDAD.SGTM_PASSWORD_HISTORY (EMAIL, PASSWORD_HASH)

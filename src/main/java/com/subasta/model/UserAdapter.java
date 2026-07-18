@@ -1,16 +1,25 @@
 package com.subasta.model;
 
+import com.subasta.provider.storage.CustomUserStorageFactory;
 import com.subasta.provider.storage.CustomUserStorage;
+import com.subasta.repository.DatabaseManager;
+import com.subasta.repository.UserRepository;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.storage.adapter.AbstractUserAdapter;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 
 public class UserAdapter extends AbstractUserAdapter {
 
+    private static final Logger logger = Logger.getLogger(UserAdapter.class.getName());
     private static final String REQUIRED_ACTIONS = "requiredActions";
     private final String keycloakId;
     private final Map<String, List<String>> attributes = new HashMap<>();
@@ -147,8 +156,38 @@ public class UserAdapter extends AbstractUserAdapter {
 
     @Override
     public Set<String> getRequiredActions() {
-        List<String> current = attributes.get(REQUIRED_ACTIONS);
-        return current != null ? new HashSet<>(current) : Collections.emptySet();
+        Set<String> actions = new HashSet<>(attributes.getOrDefault(REQUIRED_ACTIONS, Collections.emptyList()));
+
+        try {
+            PasswordPolicy policy = realm.getPasswordPolicy();
+            if (policy == null) return actions;
+
+            int daysToExpire = policy.getDaysToExpirePassword();
+            if (daysToExpire <= 0) return actions;
+
+            DatabaseManager dbManager = CustomUserStorageFactory.getDatabaseManager();
+            if (dbManager == null) dbManager = CustomUserStorageFactory.tryInitializeFromSession(session);
+            if (dbManager == null) return actions;
+
+            UserRepository userRepository = new UserRepository(dbManager);
+            String lastChangedStr = userRepository.getPasswordLastChanged(getUsername());
+
+            if (lastChangedStr == null || lastChangedStr.isEmpty()) {
+                actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
+                return actions;
+            }
+
+            LocalDateTime lastChanged = LocalDateTime.parse(lastChangedStr.substring(0, 19), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            long daysSinceChange = ChronoUnit.DAYS.between(lastChanged, LocalDateTime.now());
+            if (daysSinceChange >= daysToExpire) {
+                actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
+            }
+        } catch (Exception e) {
+            logger.log(Level.FINE, e, () -> "Error checking password expiry for: " + getUsername());
+            actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
+        }
+
+        return actions;
     }
 
     private String getFirst(String name) {
