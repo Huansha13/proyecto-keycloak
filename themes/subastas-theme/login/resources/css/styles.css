@@ -116,14 +116,15 @@ body {
     font-weight: 700;
     margin-bottom: 0;
     color: #222;
-    text-align: center;
+    /*text-align: center;*/
+    line-height: 2;
 }
 
 .text {
     color: #191919;
     font-size: 16px;
     margin-bottom: 0;
-    text-align: center;
+    /*text-align: center;*/
 }
 
 /* === Form Fields === */
@@ -320,7 +321,82 @@ body {
     height: 20px;
 }
 
-/* === Alert Messages === */
+/* === Floating Alert Messages === */
+.kc-alert-floating {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 12px 44px 12px 20px;
+    /*border-radius: 10px;*/
+    font-size: 14px;
+    /*line-height: 1.5;*/
+    max-width: 480px;
+    width: calc(100% - 40px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    animation: kc-alert-slide-down 0.3s ease-out;
+    cursor: pointer;
+}
+
+.kc-alert-floating__close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 0 4px;
+    color: inherit;
+}
+
+.kc-alert-floating__close:hover {
+    opacity: 1;
+}
+
+@keyframes kc-alert-slide-down {
+    from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes kc-alert-slide-up {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+}
+
+.kc-alert-floating.kc-alert-dismissing {
+    animation: kc-alert-slide-up 0.3s ease-in forwards;
+    pointer-events: none;
+}
+
+.kc-alert-floating.alert-error {
+    background-color: #b72e2eff;
+    /*border: 1px solid #FECACA;*/
+    color: #fff;
+}
+
+.kc-alert-floating.alert-success {
+    background-color: #2d5830;
+   /* border: 1px solid #A7F3D0;*/
+    color: #fff;
+}
+
+.kc-alert-floating.alert-warning {
+    background-color: #928820;
+    /*border: 1px solid #FDE68A;*/
+    color: #fff;
+}
+
+.kc-alert-floating.alert-info {
+    background-color: #1E40AF;
+    /*border: 1px solid #BFDBFE;*/
+    color: #fff;
+}
+
+/* === Legacy inline alerts (kept for any remaining inline usage) === */
 .alert {
     padding: 12px 16px;
     border-radius: 8px;
@@ -328,30 +404,6 @@ body {
     margin-bottom: 16px;
     width: 100%;
     max-width: 400px;
-}
-
-.alert-error {
-    background-color: #FEE2E2;
-    border: 1px solid #FECACA;
-    color: #991B1B;
-}
-
-.alert-success {
-    background-color: #D1FAE5;
-    border: 1px solid #A7F3D0;
-    color: #065F46;
-}
-
-.alert-warning {
-    background-color: #FEF3C7;
-    border: 1px solid #FDE68A;
-    color: #92400E;
-}
-
-.alert-info {
-    background-color: #DBEAFE;
-    border: 1px solid #BFDBFE;
-    color: #1E40AF;
 }
 
 /* === Form Group (Keycloak compat) === */
@@ -426,3 +478,4 @@ body {
 .kc-hidden {
     display: none !important;
 }
+

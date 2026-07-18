@@ -35,6 +35,9 @@ public class DelegateCredentialManager implements SubjectCredentialManager {
 
     @Override
     public boolean updateCredential(CredentialInput input) {
+        if (PasswordCredentialModel.TYPE.equals(input.getType())) {
+            return provider.updateCredential(realm, user, input);
+        }
         return false;
     }
 

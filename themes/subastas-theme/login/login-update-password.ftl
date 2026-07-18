@@ -16,39 +16,40 @@
                 </div>
 
                 <div class="login-view__content bg-white">
-                    <form id="kc-reset-password-form" class="login-form" action="${url.loginAction}" method="post">
+                    <form id="kc-reset-password-form" class="login-form" action="${url.loginAction}" method="post"
+                          onsubmit="var btn=document.getElementById('kc-submit');btn.disabled=true;btn.textContent='Guardando...';return true;">
 
                         <img src="https://stacdsmf.z13.web.core.windows.net/imagenes/logo-ebiz-b2m.svg" alt="logo eBIZ B2M">
 
                         <div class="login-form__content">
                             <div>
-                                <h1 class="title">Cambiar contrasena</h1>
-                                <p class="text">Ingrese su nueva contrasena.</p>
+                                <h1 class="title">Crea tu nueva contraseña</h1>
+                                <p class="text">Ingresa una contraseña segura para proteger tu cuenta.</p>
                             </div>
 
                             <div class="form-fields">
                                 <div class="form-field">
                                     <input type="password" id="password-new" class="input"
                                            name="password-new" autocomplete="new-password" autofocus
-                                           placeholder="Nueva contrasena" />
+                                           placeholder="Nueva contraseña" />
                                 </div>
 
                                 <div class="form-field">
                                     <input type="password" id="password-confirm" class="input"
                                            name="password-confirm" autocomplete="new-password"
-                                           placeholder="Confirmar contrasena" />
+                                           placeholder="Confirmar contraseña" />
                                 </div>
 
-                                <button type="submit" class="button button--primary">Cambiar contrasena</button>
+                                <button type="submit" id="kc-submit" class="button button--primary">Actualizar contraseña</button>
                             </div>
                         </div>
                     </form>
 
                     <footer class="footer">
                         <div class="footer__legal">
-                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Terminos y Condiciones</a>
+                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Términos y Condiciones</a>
                             <span class="footer__dot">&middot;</span>
-                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Politicas de privacidad</a>
+                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Políticas de privacidad</a>
                         </div>
                         <p class="footer__copyright">&copy; ${.now?string("yyyy")} eBIZ, todos los derechos reservados.</p>
                         <div class="footer__social">
@@ -63,10 +64,5 @@
         </section>
 
     <#elseif section = "info" >
-        <#if message?has_content && message.type == 'warning'>
-            <div class="alert alert-warning">${kcSanitize(message.summary)?no_esc}</div>
-        <#elseif message?has_content && message.type == 'error'>
-            <div class="alert alert-error">${kcSanitize(message.summary)?no_esc}</div>
-        </#if>
     </#if>
 </@layout.registrationLayout>

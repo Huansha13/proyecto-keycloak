@@ -1,5 +1,5 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayInfo=true displayMessage=true; section>
+<@layout.registrationLayout displayInfo=false displayMessage=false; section>
     <#if section = "header">
 
     <#elseif section = "content">
@@ -21,22 +21,19 @@
 
                         <div class="login-form__content">
                             <div>
-                                <h1 class="title">${msg("infoTitle")}</h1>
+                                <h1 class="title">Todo listo</h1>
+                                <p class="text">${message.summary!'La operación se completó exitosamente.'}</p>
                             </div>
 
-                            <#if message?has_content>
-                                <div class="alert <#if message.type == 'error'>alert-error<#elseif message.type == 'warning'>alert-warning<#else>alert-info</#if>">${kcSanitize(message.summary)?no_esc}</div>
-                            </#if>
-
-                            <a class="forgot-password" href="${url.loginUrl}">Volver al inicio de sesion</a>
+                            <a class="forgot-password" href="/realms/${realm.name}/account/">Ir al inicio de sesión</a>
                         </div>
                     </div>
 
                     <footer class="footer">
                         <div class="footer__legal">
-                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Terminos y Condiciones</a>
+                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Términos y Condiciones</a>
                             <span class="footer__dot">&middot;</span>
-                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Politicas de privacidad</a>
+                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Políticas de privacidad</a>
                         </div>
                         <p class="footer__copyright">&copy; ${.now?string("yyyy")} eBIZ, todos los derechos reservados.</p>
                         <div class="footer__social">
@@ -50,9 +47,6 @@
             </div>
         </section>
 
-    <#elseif section = "info" >
-        <#if message?has_content>
-            <div class="alert <#if message.type == 'error'>alert-error<#elseif message.type == 'warning'>alert-warning<#else>alert-info</#if>">${kcSanitize(message.summary)?no_esc}</div>
-        </#if>
+    <#elseif section = "info">
     </#if>
 </@layout.registrationLayout>

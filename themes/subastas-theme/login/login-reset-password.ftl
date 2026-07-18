@@ -16,35 +16,37 @@
                 </div>
 
                 <div class="login-view__content bg-white">
-                    <form id="kc-reset-password-form" class="login-form" action="${url.loginAction}" method="post">
-
+                    <div class="login-form">
                         <img src="https://stacdsmf.z13.web.core.windows.net/imagenes/logo-ebiz-b2m.svg" alt="logo eBIZ B2M">
 
                         <div class="login-form__content">
                             <div>
-                                <h1 class="title">Restablecer contrasena</h1>
-                                <p class="text">Ingrese su correo electronico para recuperar su contrasena.</p>
+                                <h1 class="title">Recupera tu contraseña</h1>
+                                <p class="text">Ingresa tu correo electrónico y te enviaremos las instrucciones para crear una nueva contraseña.</p>
                             </div>
 
-                            <div class="form-fields">
-                                <div class="form-field">
-                                    <input tabindex="1" id="username" class="input"
-                                           name="username" type="email" autocomplete="email" autofocus
-                                           placeholder="Ingrese su correo" />
+                            <form id="kc-reset-password-form" action="${url.loginAction}" method="post"
+                                  onsubmit="var btn=document.getElementById('kc-submit');btn.disabled=true;btn.textContent='Enviando...';btn.classList.add('button--loading');return true;">
+                                <div class="form-fields">
+                                    <div class="form-field">
+                                        <input tabindex="1" id="username" class="input"
+                                               name="username" type="email" autocomplete="email" autofocus
+                                               placeholder="Correo electrónico" />
+                                    </div>
+
+                                     <button type="submit" id="kc-submit" class="button button--primary">Enviar instrucciones</button>
                                 </div>
+                            </form>
 
-                                <button type="submit" class="button button--primary">Enviar correo</button>
-
-                                <a class="forgot-password" href="${url.loginUrl}">Volver al inicio de sesion</a>
-                            </div>
+                            <a class="forgot-password" href="${url.loginUrl}">Volver al inicio de sesión</a>
                         </div>
-                    </form>
+                    </div>
 
                     <footer class="footer">
                         <div class="footer__legal">
-                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Terminos y Condiciones</a>
+                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Términos y Condiciones</a>
                             <span class="footer__dot">&middot;</span>
-                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Politicas de privacidad</a>
+                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Políticas de privacidad</a>
                         </div>
                         <p class="footer__copyright">&copy; ${.now?string("yyyy")} eBIZ, todos los derechos reservados.</p>
                         <div class="footer__social">
@@ -59,10 +61,5 @@
         </section>
 
     <#elseif section = "info" >
-        <#if email?has_content>
-            <div class="alert alert-success">${msg("emailSent", email)}</div>
-        <#else>
-            <div class="alert alert-info">${msg("noEmail")}</div>
-        </#if>
     </#if>
 </@layout.registrationLayout>

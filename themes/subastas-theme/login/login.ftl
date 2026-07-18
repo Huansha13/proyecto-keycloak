@@ -3,10 +3,6 @@
     <#if section = "header">
 
     <#elseif section = "content">
-        <#if messagesPerField.existsError('username')>
-            <div class="alert alert-error">${kcSanitize(messagesPerField.get('username'))}</div>
-        </#if>
-
         <#if realm.password && social.providers??>
             <div id="kc-social-providers">
                 <ul>
@@ -42,8 +38,8 @@
 
                         <div class="login-form__content">
                             <div>
-                                <h1 class="title">Le damos la bienvenida</h1>
-                                <p class="text">Complete los campos para iniciar tu sesion.</p>
+                                <h1 class="title">Bienvenido</h1>
+                                <p class="text">Ingresa tus credenciales para acceder a tu cuenta.</p>
                             </div>
 
                             <div class="form-fields">
@@ -51,35 +47,33 @@
                                     <div class="form-field">
                                         <input tabindex="1" id="username" class="input"
                                                name="username" value="${(login.username!'')}" type="text" disabled
-                                               placeholder="Ingrese su correo" />
+                                               placeholder="Correo electrónico" />
                                     </div>
                                 <#else>
                                     <div class="form-field">
                                         <input tabindex="1" id="username"
-                                               class="input <#if messagesPerField.existsError('username')>input--error</#if>"
+                                               class="input"
                                                name="username" value="${(login.username!'')}" type="text" autofocus
                                                autocomplete="username"
-                                               aria-invalid="<#if messagesPerField.existsError('username')>true</#if>"
-                                               placeholder="Ingrese su correo" />
+                                               placeholder="Correo electrónico" />
                                     </div>
                                 </#if>
 
                                 <div class="form-field">
                                     <input tabindex="2" id="password"
-                                           class="input <#if messagesPerField.existsError('username')>input--error</#if>"
+                                           class="input"
                                            name="password" type="password"
                                            autocomplete="current-password"
-                                           aria-invalid="<#if messagesPerField.existsError('username')>true</#if>"
-                                           placeholder="Ingrese su contrasena" />
+                                           placeholder="Contraseña" />
                                 </div>
 
                                 <button type="submit" name="login" id="kc-login" class="button button--primary">
-                                    Iniciar sesion
+                                    Iniciar sesión
                                 </button>
 
                                 <#if realm.resetPasswordAllowed>
                                     <a class="forgot-password" href="${url.loginResetCredentialsUrl}">
-                                        Olvido su contrasena?
+                                        ¿Olvidó tu contraseña?
                                     </a>
                                 </#if>
                             </div>
@@ -88,9 +82,9 @@
 
                     <footer class="footer">
                         <div class="footer__legal">
-                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Terminos y Condiciones</a>
+                            <a class="footer__link" href="https://ebiz.pe/condiciones-generales-de-nuestros-servicios/" target="_blank" rel="noopener">Términos y Condiciones</a>
                             <span class="footer__dot">&middot;</span>
-                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Politicas de privacidad</a>
+                            <a class="footer__link" href="https://ebiz.pe/politica-de-privacidad-y-de-proteccion-de-datos-personales/" target="_blank" rel="noopener">Políticas de privacidad</a>
                         </div>
                         <p class="footer__copyright">&copy; ${.now?string("yyyy")} eBIZ, todos los derechos reservados.</p>
                         <div class="footer__social">

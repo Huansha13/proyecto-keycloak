@@ -7,8 +7,11 @@ import org.keycloak.storage.adapter.AbstractUserAdapter;
 
 import java.util.*;
 
+
+
 public class UserAdapter extends AbstractUserAdapter {
 
+    private static final String REQUIRED_ACTIONS = "requiredActions";
     private final String keycloakId;
     private final Map<String, List<String>> attributes = new HashMap<>();
     private final CustomUserStorage provider;
@@ -120,6 +123,32 @@ public class UserAdapter extends AbstractUserAdapter {
     @Override
     public SubjectCredentialManager credentialManager() {
         return new DelegateCredentialManager(provider, realm, this);
+    }
+
+    @Override
+    public void addRequiredAction(String action) {
+        List<String> current = attributes.getOrDefault(REQUIRED_ACTIONS, new ArrayList<>());
+        if (!current.contains(action)) {
+            current.add(action);
+            attributes.put(REQUIRED_ACTIONS, current);
+        }
+    }
+
+    @Override
+    public void removeRequiredAction(String action) {
+        List<String> current = attributes.get(REQUIRED_ACTIONS);
+        if (current != null) {
+            current.remove(action);
+            if (current.isEmpty()) {
+                attributes.remove(REQUIRED_ACTIONS);
+            }
+        }
+    }
+
+    @Override
+    public Set<String> getRequiredActions() {
+        List<String> current = attributes.get(REQUIRED_ACTIONS);
+        return current != null ? new HashSet<>(current) : Collections.emptySet();
     }
 
     private String getFirst(String name) {
