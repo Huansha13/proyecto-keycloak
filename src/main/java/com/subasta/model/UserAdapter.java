@@ -157,33 +157,47 @@ public class UserAdapter extends AbstractUserAdapter {
     @Override
     public Set<String> getRequiredActions() {
         Set<String> actions = new HashSet<>(attributes.getOrDefault(REQUIRED_ACTIONS, Collections.emptyList()));
+        String username = getUsername();
 
         try {
             PasswordPolicy policy = realm.getPasswordPolicy();
-            if (policy == null) return actions;
+            if (policy == null) {
+                logger.log(Level.INFO, () -> "[EXPIRY] No password policy for user: " + username);
+                return actions;
+            }
 
             int daysToExpire = policy.getDaysToExpirePassword();
-            if (daysToExpire <= 0) return actions;
+            if (daysToExpire <= 0) {
+                logger.log(Level.INFO, () -> "[EXPIRY] Password expiry disabled (daysToExpire=" + daysToExpire + ") for user: " + username);
+                return actions;
+            }
 
             DatabaseManager dbManager = CustomUserStorageFactory.getDatabaseManager();
             if (dbManager == null) dbManager = CustomUserStorageFactory.tryInitializeFromSession(session);
-            if (dbManager == null) return actions;
+            if (dbManager == null) {
+                logger.log(Level.WARNING, () -> "[EXPIRY] DatabaseManager unavailable for user: " + username);
+                return actions;
+            }
 
             UserRepository userRepository = new UserRepository(dbManager);
-            String lastChangedStr = userRepository.getPasswordLastChanged(getUsername());
+            String lastChangedStr = userRepository.getPasswordLastChanged(username);
 
             if (lastChangedStr == null || lastChangedStr.isEmpty()) {
+                logger.log(Level.INFO, () -> "[EXPIRY] No FECHAULTIMOCAMBIOPASSWORD for user: " + username + " -> forcing UPDATE_PASSWORD");
                 actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
                 return actions;
             }
 
             LocalDateTime lastChanged = LocalDateTime.parse(lastChangedStr.substring(0, 19), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             long daysSinceChange = ChronoUnit.DAYS.between(lastChanged, LocalDateTime.now());
+            logger.log(Level.INFO, () -> String.format("[EXPIRY] User=%s, lastChanged=%s, daysSince=%d, daysToExpire=%d, expired=%b",
+                    username, lastChangedStr.substring(0, 19), daysSinceChange, daysToExpire, daysSinceChange >= daysToExpire));
             if (daysSinceChange >= daysToExpire) {
                 actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
+                logger.log(Level.INFO, () -> "[EXPIRY] UPDATE_PASSWORD added for user: " + username);
             }
         } catch (Exception e) {
-            logger.log(Level.FINE, e, () -> "Error checking password expiry for: " + getUsername());
+            logger.log(Level.WARNING, e, () -> "[EXPIRY] Error checking password expiry for: " + username + " -> forcing UPDATE_PASSWORD");
             actions.add(UserModel.RequiredAction.UPDATE_PASSWORD.name());
         }
 

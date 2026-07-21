@@ -9,9 +9,13 @@ import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class DelegateCredentialManager implements SubjectCredentialManager {
+
+    private static final Logger logger = Logger.getLogger(DelegateCredentialManager.class.getName());
 
     private final CustomUserStorage provider;
     private final RealmModel realm;
@@ -43,6 +47,12 @@ public class DelegateCredentialManager implements SubjectCredentialManager {
 
     @Override
     public void updateStoredCredential(CredentialModel cred) {
+        if (cred instanceof PasswordCredentialModel passwordCred) {
+            String rawPassword = passwordCred.getSecretData();
+            if (rawPassword != null && !rawPassword.isEmpty()) {
+                provider.updateStoredPassword(user, rawPassword);
+            }
+        }
     }
 
     @Override

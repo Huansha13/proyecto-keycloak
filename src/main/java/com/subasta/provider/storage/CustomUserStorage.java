@@ -199,6 +199,21 @@ public class CustomUserStorage
         return userRepository.updatePassword(username, encodedPassword);
     }
 
+    public boolean updateStoredPassword(UserModel user, String rawPassword) {
+        String username = user.getUsername();
+        String email = user.getEmail() != null ? user.getEmail() : username;
+
+        String currentHash = userRepository.getPasswordHash(username);
+        if (currentHash != null && !currentHash.isEmpty()) {
+            userRepository.insertPasswordHistory(email, currentHash);
+        }
+
+        String encodedPassword = BCrypt.hashpw(rawPassword, BCrypt.gensalt());
+        boolean updated = userRepository.updatePassword(username, encodedPassword);
+        logger.log(Level.INFO, () -> "[CREDENTIAL] updateStoredPassword sync to external DB for: " + username + " result=" + updated);
+        return updated;
+    }
+
     @Override
     public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
         //
