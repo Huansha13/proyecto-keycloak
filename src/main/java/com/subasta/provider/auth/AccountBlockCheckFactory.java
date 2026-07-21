@@ -57,17 +57,14 @@ public class AccountBlockCheckFactory implements AuthenticatorFactory, Configura
 
     @Override
     public void init(Config.Scope config) {
-        //
     }
 
     @Override
     public void postInit(KeycloakSessionFactory factory) {
-        //
     }
 
     @Override
     public void close() {
-        //
     }
 
     @Override

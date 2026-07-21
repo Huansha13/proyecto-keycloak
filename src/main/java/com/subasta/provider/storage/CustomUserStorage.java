@@ -87,7 +87,14 @@ public class CustomUserStorage
         }
         adapter.setEmail(resolvedEmail);
 
-        adapter.setEnabled(data.habilitado() == 1);
+        boolean isBlocked = userRepository.isUserBlocked(data.login());
+        boolean isEnabled = data.habilitado() == 1 && !isBlocked;
+        adapter.setEnabled(isEnabled);
+
+        if (isBlocked) {
+            logger.log(Level.INFO, () -> "[BLOCKED] User " + data.login() + " is blocked → isEnabled=false");
+        }
+
         return adapter;
     }
 
@@ -131,12 +138,6 @@ public class CustomUserStorage
         }
 
         String username = user.getUsername();
-
-        if (userRepository.isUserBlocked(username)) {
-            logger.log(Level.WARNING, () -> "[LOGIN] Usuario bloqueado en BD: " + username);
-            return false;
-        }
-
         String storedHash = userRepository.getPasswordHash(username);
         if (storedHash == null) {
             logger.log(Level.WARNING, () -> "No password hash found for user: " + username);
