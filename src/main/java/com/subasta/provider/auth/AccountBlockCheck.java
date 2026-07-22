@@ -4,8 +4,6 @@ import com.subasta.provider.storage.CustomUserStorageFactory;
 import com.subasta.repository.DatabaseManager;
 import com.subasta.repository.UserRepository;
 import org.keycloak.authentication.AuthenticationFlowContext;
-import org.keycloak.authentication.AuthenticationFlowError;
-import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -39,8 +37,14 @@ public class AccountBlockCheck implements Authenticator {
 
         UserRepository userRepository = new UserRepository(dbManager);
         if (userRepository.isUserBlocked(username)) {
-            logger.log(Level.WARNING, () -> "[ACCOUNT-BLOCK-CHECK] Blocked account detected for: " + username);
-            throw new AuthenticationFlowException(AuthenticationFlowError.USER_DISABLED);
+            String path = context.getUriInfo().getPath();
+            boolean isLoginFlow = path.contains("/protocol/openid-connect/auth");
+            if (isLoginFlow) {
+                logger.log(Level.WARNING, () -> "[ACCOUNT-BLOCK-CHECK] Blocked account detected for: " + username);
+                context.challenge(context.form().setError("userDisabledMessage").createLoginUsernamePassword());
+                return;
+            }
+            logger.log(Level.INFO, () -> "[ACCOUNT-BLOCK-CHECK] Blocked user in non-login flow, skipping: " + username);
         }
 
         context.success();
