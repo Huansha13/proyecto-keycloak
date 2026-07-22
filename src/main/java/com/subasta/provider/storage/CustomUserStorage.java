@@ -37,14 +37,12 @@ public class CustomUserStorage
 
     private final KeycloakSession session;
     private final ComponentModel model;
-    // private final DatabaseManager databaseManager;
     private final UserRepository userRepository;
 
     public CustomUserStorage(KeycloakSession session, ComponentModel model,
                              DatabaseManager databaseManager) {
         this.session = session;
         this.model = model;
-        // this.databaseManager = databaseManager;
         this.userRepository = new UserRepository(databaseManager);
     }
 
@@ -167,21 +165,12 @@ public class CustomUserStorage
         if (!supportsCredentialType(input.getType())) {
             return false;
         }
+
         String password = input.getChallengeResponse();
         String username = user.getUsername();
         String email = user.getEmail() != null ? user.getEmail() : username;
 
-        String currentHash = userRepository.getPasswordHash(username);
-        if (currentHash != null && !currentHash.isEmpty() && BCrypt.checkpw(password, currentHash)) {
-            throw new ModelException("invalidPasswordHistoryMessage", 8);
-        }
-
-        List<String> historyHashes = userRepository.getPasswordHistory(email, 8);
-        for (String historyHash : historyHashes) {
-            if (historyHash != null && !historyHash.isEmpty() && BCrypt.checkpw(password, historyHash)) {
-                throw new ModelException("invalidPasswordHistoryMessage", 8);
-            }
-        }
+        String currentHash = validatePasswordHistory(username, email, password);
 
         PasswordPolicyManagerProvider policyManager = session.getProvider(PasswordPolicyManagerProvider.class);
         if (policyManager != null) {
@@ -191,27 +180,7 @@ public class CustomUserStorage
             }
         }
 
-        if (currentHash != null && !currentHash.isEmpty()) {
-            userRepository.insertPasswordHistory(email, currentHash);
-        }
-
-        String encodedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        return userRepository.updatePassword(username, encodedPassword);
-    }
-
-    public boolean updateStoredPassword(UserModel user, String rawPassword) {
-        String username = user.getUsername();
-        String email = user.getEmail() != null ? user.getEmail() : username;
-
-        String currentHash = userRepository.getPasswordHash(username);
-        if (currentHash != null && !currentHash.isEmpty()) {
-            userRepository.insertPasswordHistory(email, currentHash);
-        }
-
-        String encodedPassword = BCrypt.hashpw(rawPassword, BCrypt.gensalt());
-        boolean updated = userRepository.updatePassword(username, encodedPassword);
-        logger.log(Level.INFO, () -> "[CREDENTIAL] updateStoredPassword sync to external DB for: " + username + " result=" + updated);
-        return updated;
+        return saveNewPassword(username, email, password, currentHash);
     }
 
     @Override
@@ -244,16 +213,6 @@ public class CustomUserStorage
         }
 
         return applyPagination(users.stream(), firstResult, maxResults);
-    }
-
-    private Stream<UserModel> applyPagination(Stream<UserModel> stream, Integer firstResult, Integer maxResults) {
-        if (firstResult != null && firstResult > 0) {
-            stream = stream.skip(firstResult);
-        }
-        if (maxResults != null && maxResults > 0) {
-            stream = stream.limit(maxResults);
-        }
-        return stream;
     }
 
     @Override
@@ -294,5 +253,52 @@ public class CustomUserStorage
     @Override
     public int getUsersCount(RealmModel realm, Map<String, String> params) {
         return 0;
+    }
+
+    public void updateStoredPassword(UserModel user, String rawPassword) {
+        String username = user.getUsername();
+        String email = user.getEmail() != null ? user.getEmail() : username;
+
+        String currentHash = validatePasswordHistory(username, email, rawPassword);
+
+        boolean updated = saveNewPassword(username, email, rawPassword, currentHash);
+
+        logger.log(Level.INFO, () -> "[CREDENTIAL] updateStoredPassword sync to external DB for: " + username + " result=" + updated);
+    }
+
+    private Stream<UserModel> applyPagination(Stream<UserModel> stream, Integer firstResult, Integer maxResults) {
+        if (firstResult != null && firstResult > 0) {
+            stream = stream.skip(firstResult);
+        }
+        if (maxResults != null && maxResults > 0) {
+            stream = stream.limit(maxResults);
+        }
+        return stream;
+    }
+
+    private String validatePasswordHistory(String username, String email, String newPassword) {
+        String currentHash = userRepository.getPasswordHash(username);
+
+        if (currentHash != null && !currentHash.isEmpty() && BCrypt.checkpw(newPassword, currentHash)) {
+            throw new ModelException("invalidPasswordHistoryMessage", 8);
+        }
+
+        List<String> historyHashes = userRepository.getPasswordHistory(email, 8);
+        for (String historyHash : historyHashes) {
+            if (historyHash != null && !historyHash.isEmpty() && BCrypt.checkpw(newPassword, historyHash)) {
+                throw new ModelException("invalidPasswordHistoryMessage", 8);
+            }
+        }
+
+        return currentHash;
+    }
+
+    private boolean saveNewPassword(String username, String email, String newPassword, String currentHash) {
+        if (currentHash != null && !currentHash.isEmpty()) {
+            userRepository.insertPasswordHistory(email, currentHash);
+        }
+
+        String encodedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        return userRepository.updatePassword(username, encodedPassword);
     }
 }

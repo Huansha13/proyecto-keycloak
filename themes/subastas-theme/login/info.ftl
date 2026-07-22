@@ -25,7 +25,7 @@
                                 <p class="text">${message.summary!'La operación se completó exitosamente.'}</p>
                             </div>
 
-                            <a class="forgot-password" href="${url.loginUrl}">Volver al inicio de sesión</a>
+                            <a class="forgot-password" href="${properties.frontendUrl!'/'}">Volver al inicio de sesión</a>
                         </div>
                     </div>
 
