@@ -16,6 +16,7 @@ public class LoginEventListener implements EventListenerProvider {
     private static final Logger logger = Logger.getLogger(LoginEventListener.class.getName());
 
     private static final String HOSTNAME = "KEYCLOAK";
+    private static final int MAX_TEMPORARY_LOCKOUTS = 3;
 
     private final DatabaseManager databaseManager;
     private final UserRepository userRepository;
@@ -52,6 +53,8 @@ public class LoginEventListener implements EventListenerProvider {
 
         logger.log(Level.INFO, () -> "[EVENT-LISTENER] Login exitoso: " + username + " session=" + sessionId);
 
+        userRepository.resetFailedAttempts(username);
+
         try (Connection conn = databaseManager.getConnection()) {
             new AuditRepository(conn).saveLoginAttempt(sessionId, username, ip, HOSTNAME, true, null);
         } catch (Exception e) {
@@ -73,9 +76,15 @@ public class LoginEventListener implements EventListenerProvider {
         final String logError = error;
         logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Login fallido: " + logUsername + " error=" + logError);
 
-        if (Errors.USER_DISABLED.equals(error) || Errors.USER_TEMPORARILY_DISABLED.equals(error)) {
-            logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Bloqueando cuenta en BD: " + logUsername);
-            userRepository.blockUser(username);
+        if (Errors.USER_TEMPORARILY_DISABLED.equals(error)
+                || Errors.INVALID_USER_CREDENTIALS.equals(error)
+                || Errors.USER_NOT_FOUND.equals(error)) {
+            int attempts = userRepository.incrementFailedAttempts(username);
+            logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Intento fallido #" + attempts + " para: " + logUsername);
+            if (attempts > MAX_TEMPORARY_LOCKOUTS) {
+                logger.log(Level.WARNING, () -> "[EVENT-LISTENER] Maximo de intentos alcanzado, bloqueando permanentemente: " + logUsername);
+                userRepository.blockUser(username);
+            }
         }
 
         try (Connection conn = databaseManager.getConnection()) {

@@ -64,21 +64,78 @@ public class UserRepository {
         }
     }
 
-    public void unblockUser(String username) {
+    public int incrementFailedAttempts(String username) {
+        //language=TSQL
+        String selectSql = """
+                SELECT INTENTOS_FALLIDOS, FECHA_ULTIMO_INTENTO_FALLIDO
+                FROM ESEGURIDAD.SGTM_USUARIO
+                WHERE UPPER(LOGIN) = UPPER(?)
+                """;
+        String resetSql = """
+                UPDATE ESEGURIDAD.SGTM_USUARIO
+                SET INTENTOS_FALLIDOS = 0,
+                    FECHA_ULTIMO_INTENTO_FALLIDO = GETDATE(),
+                    MODIFICADOPOR = 'KEYCLOAK',
+                    FECHAMODIFICACION = GETDATE()
+                WHERE UPPER(LOGIN) = UPPER(?)
+                """;
+        String updateSql = """
+                UPDATE ESEGURIDAD.SGTM_USUARIO
+                SET INTENTOS_FALLIDOS = INTENTOS_FALLIDOS + 1,
+                    FECHA_ULTIMO_INTENTO_FALLIDO = GETDATE(),
+                    MODIFICADOPOR = 'KEYCLOAK',
+                    FECHAMODIFICACION = GETDATE()
+                WHERE UPPER(LOGIN) = UPPER(?)
+                """;
+        try (Connection conn = databaseManager.getConnection()) {
+            int current = 0;
+            java.sql.Timestamp lastAttempt = null;
+            try (PreparedStatement stmt = conn.prepareStatement(selectSql)) {
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        current = rs.getInt("INTENTOS_FALLIDOS");
+                        lastAttempt = rs.getTimestamp("FECHA_ULTIMO_INTENTO_FALLIDO");
+                    }
+                }
+            }
+            if (lastAttempt != null) {
+                long minutesSince = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(
+                        System.currentTimeMillis() - lastAttempt.getTime());
+                if (minutesSince >= 15) {
+                    logger.log(Level.INFO, () -> "[USER-REPO] Reseteando contador para " + username + " (pasaron " + minutesSince + "min)");
+                    try (PreparedStatement stmt = conn.prepareStatement(resetSql)) {
+                        stmt.setString(1, username);
+                        stmt.executeUpdate();
+                    }
+                    return 1;
+                }
+            }
+            try (PreparedStatement stmt = conn.prepareStatement(updateSql)) {
+                stmt.setString(1, username);
+                stmt.executeUpdate();
+            }
+            return current + 1;
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, e, () -> "Error incrementing failed attempts for: " + username);
+            return 0;
+        }
+    }
+
+    public void resetFailedAttempts(String username) {
         //language=TSQL
         String sql = """
                 UPDATE ESEGURIDAD.SGTM_USUARIO
-                SET BLOQUEADO_POR_INTENTOS = 0,
-                    HABILITADO = 1
+                SET INTENTOS_FALLIDOS = 0,
+                    FECHA_ULTIMO_INTENTO_FALLIDO = NULL
                 WHERE UPPER(LOGIN) = UPPER(?)
                 """;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
             stmt.executeUpdate();
-            logger.log(Level.INFO, () -> "[USER-REPO] User unblocked: " + username);
         } catch (SQLException e) {
-            logger.log(Level.WARNING, e, () -> "Error unblocking user: " + username);
+            logger.log(Level.WARNING, e, () -> "Error resetting failed attempts for: " + username);
         }
     }
 

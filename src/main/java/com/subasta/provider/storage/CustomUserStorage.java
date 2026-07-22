@@ -154,7 +154,6 @@ public class CustomUserStorage
         }
 
         if (valid) {
-            userRepository.unblockUser(username);
             logger.log(Level.INFO, () -> "[LOGIN] Login exitoso para: " + username);
         } else {
             logger.log(Level.WARNING, () -> "[LOGIN] Login fallido para: " + username);
