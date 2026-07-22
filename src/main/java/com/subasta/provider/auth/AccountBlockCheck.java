@@ -5,6 +5,7 @@ import com.subasta.repository.DatabaseManager;
 import com.subasta.repository.UserRepository;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -39,8 +40,7 @@ public class AccountBlockCheck implements Authenticator {
         UserRepository userRepository = new UserRepository(dbManager);
         if (userRepository.isUserBlocked(username)) {
             logger.log(Level.WARNING, () -> "[ACCOUNT-BLOCK-CHECK] Blocked account detected for: " + username);
-            context.fail(AuthenticationFlowError.USER_DISABLED);
-            return;
+            throw new AuthenticationFlowException(AuthenticationFlowError.USER_DISABLED);
         }
 
         context.success();
