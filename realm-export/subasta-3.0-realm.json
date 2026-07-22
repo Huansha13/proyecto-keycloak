@@ -536,24 +536,6 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
-  "users": [
-    {
-      "id": "215f2157-a134-40eb-89b5-a2a49c97032b",
-      "username": "service-account-subasta-client",
-      "emailVerified": false,
-      "enabled": true,
-      "createdTimestamp": 1784657111100,
-      "totp": false,
-      "serviceAccountClientId": "subasta-client",
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "default-roles-subasta-3.0"
-      ],
-      "notBefore": 0,
-      "groups": []
-    }
-  ],
   "scopeMappings": [
     {
       "clientScope": "openid",
@@ -825,7 +807,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
       "redirectUris": [
         "http://localhost:9000/*"
       ],
@@ -837,17 +818,12 @@
       "consentRequired": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": true,
-      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
-        "logout.confirmation.enabled": "false",
-        "id.token.as.detached.signature": "false",
-        "client.secret.creation.time": "1784658153",
-        "client.introspection.response.allow.jwt.claim.enabled": "false",
-        "standard.token.exchange.enabled": "false",
         "oauth2.jwt.authorization.grant.enabled": "false",
         "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
@@ -856,17 +832,24 @@
         "use.refresh.tokens": "true",
         "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
-        "client.use.lightweight.access.token.enabled": "false",
         "backchannel.logout.session.required": "false",
-        "request.object.required": "not required",
         "client_credentials.use_refresh_token": "false",
+        "require.pushed.authorization.requests": "false",
+        "ssf.enabled": "false",
+        "pkce.code.challenge.method": "S256",
+        "dpop.bound.access.tokens": "false",
+        "logout.confirmation.enabled": "false",
+        "id.token.as.detached.signature": "false",
+        "client.secret.creation.time": "1784658153",
+        "client.introspection.response.allow.jwt.claim.enabled": "false",
+        "standard.token.exchange.enabled": "false",
+        "client.use.lightweight.access.token.enabled": "false",
+        "request.object.required": "not required",
         "access.token.header.type.rfc9068": "false",
         "tls.client.certificate.bound.access.tokens": "false",
-        "require.pushed.authorization.requests": "false",
         "acr.loa.map": "{}",
         "display.on.consent.screen": "false",
-        "token.response.type.bearer.lower-case": "false",
-        "dpop.bound.access.tokens": "false"
+        "token.response.type.bearer.lower-case": "false"
       },
       "authenticationFlowBindingOverrides": {
         "browser": "f5875237-97c4-4b21-8e2c-558b6c8094a3"
