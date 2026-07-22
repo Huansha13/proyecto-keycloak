@@ -1,15 +1,16 @@
 services:
-  keycloak-subastas:
+  keycloak:
     image: quay.io/keycloak/keycloak:26.7.0
-    container_name: keycloak-subastas-container
+    container_name: keycloak-subasta-${ENV_NAME}
     ports:
-      - "8086:8080"
+      - "${KC_PORT}:8080"
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_ADMIN=${KC_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KC_ADMIN_PASSWORD}
       - KC_HTTP_ENABLED=true
+      - KC_HTTPS_REQUIRED=${KC_HTTPS_REQUIRED:false}
       - KC_HOSTNAME_STRICT=false
-      - KC_LOG_LEVEL=INFO
+      - KC_LOG_LEVEL=${KC_LOG_LEVEL:-INFO}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -17,7 +18,7 @@ services:
       - ./realm-export:/opt/keycloak/data/import
       - ./themes:/opt/keycloak/themes
       - keycloak-data:/opt/keycloak/data
-    command: start-dev --import-realm --spi-theme-static-max-age=-1 --spi-theme-cache-themes=false --spi-theme-cache-templates=false
+    command: ${KC_COMMAND:-start-dev --import-realm --spi-theme-static-max-age=-1 --spi-theme-cache-themes=false --spi-theme-cache-templates=false}
 
 volumes:
   keycloak-data:
