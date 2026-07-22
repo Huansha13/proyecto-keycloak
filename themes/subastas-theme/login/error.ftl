@@ -25,7 +25,7 @@
                                 <p class="text">${message.summary!'No pudimos procesar tu solicitud. Por favor, intenta nuevamente.'}</p>
                             </div>
 
-                            <a class="forgot-password" href="/realms/${realm.name}/account/">Volver al inicio de sesión</a>
+                            <a class="forgot-password" href="${url.loginUrl}">Volver al inicio de sesión</a>
                         </div>
                     </div>
 
