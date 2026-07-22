@@ -9,12 +9,6 @@ target/
 .project
 .classpath
 
-# Environment files (contain secrets)
-.env
-.env.local
-.env.*.local
-.env.prd
-
 # OS files
 .DS_Store
 Thumbs.db
